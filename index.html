@@ -173,6 +173,14 @@ new MTLLoader().load('./assets/BMW_X_5.mtl', materials => {
   }, undefined, err => { modelMessage.textContent='Не удалось загрузить OBJ-модель'; console.error(err); });
 }, undefined, err => { modelMessage.textContent='Не удалось загрузить материалы модели'; console.error(err); });
 const keys={};
+let cameraMode='third'; // По умолчанию — вид сзади машины.
+addEventListener('keydown',e=>{
+ if(e.code==='KeyC' && !e.repeat){
+  cameraMode = cameraMode==='third' ? 'cockpit' : 'third';
+  const status=document.getElementById('status');
+  if(status) status.textContent = cameraMode==='third' ? 'Камера: 3-е лицо · C — сменить' : 'Камера: салон · C — сменить';
+ }
+});
 document.querySelectorAll('.touchBtn, .pedal').forEach(btn=>{
   const code=btn.dataset.key;
   const press=e=>{e.preventDefault();keys[code]=true;btn.classList.add('active');};
@@ -212,12 +220,19 @@ car.position.addScaledVector(velocity,dt);
 if(Math.abs(car.position.x)>8.2){car.position.x=Math.sign(car.position.x)*8.2;speed*=.92;}
 // Боты едут вперёд и появляются снова далеко впереди, создавая постоянный трафик
 for(const b of bots){b.mesh.position.z += b.cruise*dt;if(b.mesh.position.z < car.position.z-90){b.mesh.position.z=car.position.z+900+Math.random()*900;b.mesh.position.x=b.lane;}}
-// Камера возвращена к прежнему виду от первого лица: закреплена в салоне.
-const cockpitPos=car.localToWorld(new THREE.Vector3(-.48,1.58,-.42));
-camera.position.copy(cockpitPos);
-camera.quaternion.copy(car.quaternion);
-camera.rotateY(Math.PI);
-camera.rotateX(-0.015);
+// Камера: клавиша C переключает вид от третьего лица и вид из салона.
+if(cameraMode === 'third'){
+ const desiredPos=car.localToWorld(new THREE.Vector3(0,4.5,-11));
+ const targetPos=car.localToWorld(new THREE.Vector3(0,1.2,2.5));
+ camera.position.lerp(desiredPos,1-Math.exp(-5.5*dt));
+ camera.lookAt(targetPos);
+} else {
+ const cockpitPos=car.localToWorld(new THREE.Vector3(-.48,1.58,-.42));
+ camera.position.copy(cockpitPos);
+ camera.quaternion.copy(car.quaternion);
+ camera.rotateY(Math.PI);
+ camera.rotateX(-0.015);
+}
 
 if(socket && socket.connected && roomCode && performance.now()-lastNetSend>80){lastNetSend=performance.now();socket.emit('drive-state',{x:car.position.x,y:car.position.y,z:car.position.z,heading});}
 document.getElementById('num').textContent=Math.round(Math.abs(speed)*3.6);
