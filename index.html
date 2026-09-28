@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Urban Drive Engine — BMW X5</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101820;font-family:Arial,sans-serif;color:white}
+#hud{position:fixed;inset:0;pointer-events:none}
+.panel{position:absolute;background:rgba(7,14,22,.78);border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:12px 16px;backdrop-filter:blur(6px)}
+#brand{top:16px;left:16px;font-weight:800;letter-spacing:1px}#speed{bottom:22px;right:22px;text-align:right;min-width:175px}
+#num{font-size:48px;font-weight:800;line-height:1}#unit{font-size:12px;color:#a9bdcb}#gear{font-size:16px;color:#72d7ff;margin-top:5px}
+#help{bottom:18px;left:18px;line-height:1.7;font-size:13px;color:#d6e4ed}
+#status{top:16px;right:16px;color:#a9bdcb;font-size:12px}
+#start{position:fixed;inset:0;display:grid;place-items:center;background:rgba(3,8,14,.78);z-index:3}
+#touchControls{display:none;position:fixed;inset:0;z-index:2;pointer-events:none}
+#wheelControl{position:absolute;left:22px;bottom:78px;width:142px;height:142px;border:10px solid rgba(225,238,246,.82);border-radius:50%;background:radial-gradient(circle,rgba(20,35,48,.82) 0 18%,transparent 19%),rgba(10,24,36,.32);box-shadow:0 0 0 3px rgba(0,0,0,.3),inset 0 0 10px #000;pointer-events:auto;touch-action:none;user-select:none}
+#wheelControl:before,#wheelControl:after{content:"";position:absolute;background:rgba(225,238,246,.85);border-radius:5px;left:calc(50% - 5px);top:8px;width:10px;height:55px;transform-origin:50% 100%}
+#wheelControl:after{top:auto;bottom:8px;height:45px}
+.wheelHub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:36px;height:36px;border-radius:50%;background:#1b2d3c;border:2px solid #a9bdcb}
+.pedals{position:absolute;right:18px;bottom:78px;display:flex;gap:10px;align-items:flex-end;pointer-events:auto}
+.pedal{width:66px;height:108px;border-radius:13px;border:1px solid rgba(255,255,255,.35);background:linear-gradient(135deg,rgba(35,54,68,.92),rgba(8,18,27,.92));color:#fff;font-size:14px;font-weight:bold;touch-action:none;user-select:none;display:flex;align-items:center;justify-content:center;writing-mode:vertical-rl;letter-spacing:2px}
+.pedal.gas{height:132px;background:linear-gradient(135deg,rgba(34,125,80,.92),rgba(8,48,30,.92))}
+.pedal.active{filter:brightness(1.5);outline:2px solid #fff}
+.pad{position:absolute;bottom:22px;display:flex;gap:10px;pointer-events:auto}
+#drivePad{right:18px;align-items:flex-end}
+#steerPad{left:18px;align-items:flex-end}
+.touchBtn{width:66px;height:66px;border-radius:50%;border:1px solid rgba(255,255,255,.35);background:rgba(10,24,36,.62);color:#fff;font-size:21px;font-weight:bold;touch-action:none;user-select:none;-webkit-user-select:none;backdrop-filter:blur(5px)}
+.touchBtn.small{width:54px;height:54px;font-size:15px}
+.touchBtn.active{background:rgba(54,169,232,.8);color:#06121b}
+@media (pointer:coarse), (max-width:800px){
+ #touchControls{display:block}
+ #help{display:none}
+ #brand{top:9px;left:9px;padding:9px 11px;font-size:12px}
+ #status{top:9px;right:9px;padding:8px 10px;font-size:10px;max-width:42vw}
+ #speed{right:10px;bottom:165px;min-width:112px;padding:9px 12px}
+ #num{font-size:34px}
+ .pad{bottom:75px}
+ #wheelControl{left:14px;bottom:76px;width:116px;height:116px;border-width:8px}
+ .pedals{right:12px;bottom:76px;gap:7px}
+ .pedal{width:52px;height:90px;font-size:12px}
+ .pedal.gas{height:112px}
+ .touchBtn{width:60px;height:60px}
+ .touchBtn.small{width:48px;height:48px}
+}
+.card{max-width:520px;margin:20px;padding:28px;background:#111f2d;border:1px solid #294154;border-radius:18px;text-align:center}
+button{background:#36a9e8;color:#06121b;border:0;border-radius:10px;padding:13px 24px;font-size:16px;font-weight:bold;cursor:pointer}
+h1{margin:0 0 12px;font-size:27px}p{color:#c2d1dc;line-height:1.55}
+</style>
+</head>
+<body>
+<div id="hud">
+ <div id="brand" class="panel">URBAN DRIVE <span style="color:#48c6ff">ENGINE</span><div style="font-size:11px;color:#a9bdcb;margin-top:5px">ПРОТОТИП • BMW X5</div></div>
+ <div id="status" class="panel">WASD — управление</div>
+ <div id="help" class="panel">W / ↑ — газ<br>S / ↓ — тормоз / назад<br>A D / ← → — поворот<br>SPACE — ручник<br>C — камера · R — сброс</div>
+ <div id="speed" class="panel"><div id="num">0</div><div id="unit">КМ/Ч</div><div id="gear">P · ГОТОВ К СТАРТУ</div></div>
+</div>
+<div id="onlinePanel" style="position:fixed;z-index:4;top:70px;left:12px;background:#0a1724eF;border:1px solid #466174;border-radius:12px;padding:12px;width:min(290px,calc(100vw - 24px));font:14px Arial;color:white">
+ <b>🌐 Онлайн с друзьями</b>
+ <div style="display:flex;gap:6px;margin-top:9px"><input id="roomInput" placeholder="Код комнаты" maxlength="8" style="min-width:0;width:100%;padding:9px;border-radius:7px;border:1px solid #60798b;background:#152635;color:white;text-transform:uppercase"><button id="joinRoom" style="padding:9px 12px">Войти</button></div>
+ <button id="createRoom" style="margin-top:7px;width:100%;padding:9px">Создать комнату</button>
+ <div id="onlineStatus" style="font-size:12px;color:#c0d7e5;margin-top:8px">Не подключено. Для онлайна нужен сервер.</div>
+ <button id="copyRoom" style="display:none;margin-top:7px;width:100%;padding:8px">Скопировать ссылку</button>
+</div>
+<div id="touchControls">
+  <div id="wheelControl" aria-label="Руль: веди пальцем влево или вправо"><div class="wheelHub"></div></div>
+  <div class="pedals">
+    <button class="pedal" data-key="KeyS" aria-label="Тормоз">ТОРМОЗ</button>
+    <button class="pedal gas" data-key="KeyW" aria-label="Газ">ГАЗ</button>
+  </div>
+</div>
+<div id="start"><div class="card"><h1>URBAN DRIVE ENGINE</h1><p>Первый прототип собственного 3D-движка: машина, город, камера и базовая физика. Управление — WASD или стрелки, ручник — пробел.</p><button id="go">ЗАПУСТИТЬ ИГРУ</button></div></div>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}
+</script>
+<script src="/socket.io/socket.io.js"></script>\n<script type="module">
+import * as THREE from 'three';
+import { OBJLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/OBJLoader.js';
+import { MTLLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/MTLLoader.js';
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x9ac7e2); scene.fog=new THREE.Fog(0x9ac7e2,130,520);
+const camera=new THREE.PerspectiveCamera(68,innerWidth/innerHeight,.1,15000);
+const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'high-performance'});
+renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.25));renderer.shadowMap.enabled=false;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;document.body.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xdceeff,0x59604e,2));
+const sun=new THREE.DirectionalLight(0xfff0d6,2.2);sun.position.set(-80,130,40);scene.add(sun);
+const mat=(c,r=.8,m=0)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m});
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(1200,1200),mat(0x687c62));ground.rotation.x=-Math.PI/2;ground.position.y=-.15;scene.add(ground);
+const roadMat=mat(0x30363d),lineMat=mat(0xe7e4cf),sideMat=mat(0x929a9c);
+function box(w,h,d,material,x,y,z,parent=scene){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);o.position.set(x,y,z);parent.add(o);return o;}
+// Длинная прямая дорога вперёд по оси Z
+box(18,.12,12000,roadMat,0,-.04,5900);
+// Разметка пунктиром на всей длине трассы
+for(let z=-100;z<=11900;z+=18){box(.16,.018,7,lineMat,0,.035,z);}
+// Обочины и разделительные линии
+box(.35,.18,12000,sideMat,-9.15,.02,5900);box(.35,.18,12000,sideMat,9.15,.02,5900);
+for(const x of [-3,3]) for(let z=-100;z<=11900;z+=30) box(.09,.016,12,lineMat,x,.04,z);
+for(let i=-10;i<=10;i++){for(let j=-10;j<=10;j++){if(Math.abs(i)<2||Math.abs(j)<2)continue;let x=i*38+(Math.random()-.5)*8,z=j*38+(Math.random()-.5)*8;
+let w=12+Math.random()*13,d=12+Math.random()*13,h=10+Math.random()*55;
+let colors=[0x8b969d,0xc0b6a2,0x667b88,0xb6a18a,0x7c858a];let b=box(w,h,d,mat(colors[Math.floor(Math.random()*colors.length)]),x,h/2,z);
+}}
+// Движущиеся машины-боты на дороге
+const bots=[];
+const rubber=mat(0x111315);
+const botColors=[0xd83b35,0xf2f0e8,0x202a35,0x2f8bcb,0xe0b43a,0x777d84];
+function makeBot(i){
+ const g=new THREE.Group(); scene.add(g);
+ const paint=mat(botColors[i%botColors.length],.32,.35), win=new THREE.MeshStandardMaterial({color:0x182632,roughness:.2,metalness:.25});
+ box(1.9,.62,3.8,paint,0,.72,0,g); box(1.55,.65,1.85,win,0,1.28,-.25,g);
+ box(1.85,.16,.12,paint,0,.47,1.88,g); box(1.85,.14,.12,paint,0,.48,-1.88,g);
+ for(const x of [-1,1]) for(const z of [-1.2,1.2]){const w=new THREE.Mesh(new THREE.CylinderGeometry(.36,.36,.22,12),rubber);w.rotation.z=Math.PI/2;w.position.set(x,.38,z);g.add(w);}
+ g.position.set([-6,-3,3,6][i%4],0,90+i*105);
+ bots.push({mesh:g,cruise:22+(i%5)*7,lane:[-6,-3,3,6][i%4]});
+}
+for(let i=0;i<18;i++) makeBot(i);
+const car=new THREE.Group();scene.add(car);
+// Stylized BMW X5 G05-inspired SUV body (approximation)
+const bodyMat=mat(0x172e4d,.28,.68), glassMat=new THREE.MeshStandardMaterial({color:0x17232c,roughness:.16,metalness:.45}), rim=mat(0xb8c3cc,.22,.85), grille=mat(0x080b0e,.25,.6), lamp=mat(0xeaf7ff,.18,.35);
+box(2.28,.62,4.55,bodyMat,0,.82,0,car);
+box(2.18,.35,2.9,bodyMat,0,1.18,-.12,car);
+box(1.9,.78,2.35,bodyMat,0,1.72,-.32,car);
+box(1.82,.58,2.12,glassMat,0,1.77,-.30,car);
+box(1.9,.12,2.28,bodyMat,0,2.09,-.30,car);
+box(2.2,.20,1.05,bodyMat,0,1.12,1.63,car);
+box(2.22,.28,.22,bodyMat,0,.61,2.22,car);
+box(2.2,.25,.22,bodyMat,0,.62,-2.22,car);
+box(.66,.42,.07,grille,-.38,.91,2.30,car);box(.66,.42,.07,grille,.38,.91,2.30,car);
+for(const x of [-.76,.76]){box(.55,.19,.07,lamp,x,1.13,2.29,car);box(.5,.12,.07,mat(0xff3030),x,1.08,-2.29,car);}
+for(const x of [-.94,.94]){box(.10,.68,1.95,bodyMat,x,1.77,-.30,car);box(.16,.14,.22,bodyMat,x*1.15,1.48,.77,car);box(.10,.18,2.6,bodyMat,x,.55,-.08,car);}
+for(const x of [-1.12,1.12])for(const z of [-1.48,1.48]){
+ let wheel=new THREE.Group();wheel.position.set(x,.49,z);car.add(wheel);
+ let tire=new THREE.Mesh(new THREE.CylinderGeometry(.49,.49,.30,20),rubber);tire.rotation.z=Math.PI/2;wheel.add(tire);
+ let hub=new THREE.Mesh(new THREE.CylinderGeometry(.29,.29,.315,16),rim);hub.rotation.z=Math.PI/2;wheel.add(hub);
+ let center=new THREE.Mesh(new THREE.CylinderGeometry(.10,.10,.325,12),grille);center.rotation.z=Math.PI/2;wheel.add(center);
+}
+// Салон: торпедо, приборная панель, стойки, центральный экран и рулевое колесо.
+const dashMat=mat(0x171d23,.48,.18), leatherMat=mat(0x080b0e,.72), screenMat=new THREE.MeshStandardMaterial({color:0x183c4b,emissive:0x0b2835,emissiveIntensity:.65,roughness:.25});
+box(2.05,.22,.72,dashMat,0,1.35,.92,car); // торпедо
+box(.76,.06,.38,leatherMat,0,1.49,.78,car); // верх торпедо
+box(.56,.28,.045,screenMat,0,1.58,.55,car); // центральный экран
+box(.52,.20,.05,grille,0,1.37,.52,car); // центральные дефлекторы
+box(.72,.13,.22,leatherMat,0,.95,-.42,car); // центральный тоннель
+// Руль в салоне (виден из водительского кресла)
+const cabinWheel=new THREE.Group(); cabinWheel.position.set(-.48,1.35,.48); cabinWheel.rotation.x=.18; car.add(cabinWheel);
+const steeringRing=new THREE.Mesh(new THREE.TorusGeometry(.32,.045,10,36),leatherMat); cabinWheel.add(steeringRing);
+box(.075,.53,.065,leatherMat,0,0,0,cabinWheel); box(.48,.065,.065,leatherMat,0,0,0,cabinWheel);
+const steeringHub=new THREE.Mesh(new THREE.CylinderGeometry(.105,.105,.08,20),bodyMat); steeringHub.rotation.x=Math.PI/2; cabinWheel.add(steeringHub);
+// Передние стойки и нижняя рамка лобового стекла
+box(.11,.82,.13,bodyMat,-.96,1.78,.76,car);box(.11,.82,.13,bodyMat,.96,1.78,.76,car);
+box(1.9,.10,.14,bodyMat,0,2.12,.76,car);
+car.position.set(0,0,0);
+// Load the user's detailed BMW X5 mesh. Keep the procedural cockpit as a fallback if the model fails.
+const modelRoot = new THREE.Group();
+car.add(modelRoot);
+const modelMessage = document.createElement('div');
+modelMessage.style.cssText='position:fixed;top:58px;left:16px;padding:7px 11px;background:#08131dcc;border-radius:8px;font:12px Arial;color:#d9e8f0;z-index:2';
+modelMessage.textContent='Загрузка 3D-модели BMW X5…'; document.body.appendChild(modelMessage);
+new MTLLoader().load('./assets/BMW_X_5.mtl', materials => {
+  materials.preload();
+  const loader = new OBJLoader(); loader.setMaterials(materials);
+  loader.load('./assets/BMW_X_5.obj', object => {
+    const bounds = new THREE.Box3().setFromObject(object);
+    const size = new THREE.Vector3(); bounds.getSize(size);
+    const center = new THREE.Vector3(); bounds.getCenter(center);
+    // Model is authored in millimeter-like units; scale to a ~2.0 m wide SUV.
+    const scale = 2.05 / Math.max(size.x, 0.001);
+    object.scale.setScalar(scale);
+    object.position.set(-center.x*scale, -bounds.min.y*scale, -center.z*scale);
+    object.traverse(node => { if (node.isMesh) { node.castShadow=true; node.receiveShadow=true; if(node.material){ const mats=Array.isArray(node.material)?node.material:[node.material]; mats.forEach(m=>{m.side=THREE.DoubleSide; if(m.color && m.color.getHex()===0xffffff) m.color.setHex(0x9ba4aa); m.roughness=Math.max(.22,m.roughness ?? .7); m.metalness=Math.min(.65,m.metalness ?? .15);}); } } });
+    modelRoot.add(object);
+    // Hide the blocky exterior, retaining no duplicate body under the detailed mesh.
+    car.children.forEach(child => { if(child !== modelRoot) child.visible=false; });
+    modelMessage.textContent='3D-модель BMW X5 загружена';
+    setTimeout(()=>modelMessage.remove(),2600);
+  }, undefined, err => { modelMessage.textContent='Не удалось загрузить OBJ-модель'; console.error(err); });
+}, undefined, err => { modelMessage.textContent='Не удалось загрузить материалы модели'; console.error(err); });
+const keys={};
+document.querySelectorAll('.touchBtn, .pedal').forEach(btn=>{
+  const code=btn.dataset.key;
+  const press=e=>{e.preventDefault();keys[code]=true;btn.classList.add('active');};
+  const release=e=>{e.preventDefault();keys[code]=false;btn.classList.remove('active');};
+  btn.addEventListener('pointerdown',press);
+  btn.addEventListener('pointerup',release);
+  btn.addEventListener('pointercancel',release);
+  btn.addEventListener('pointerleave',release);
+});
+// Виртуальный руль: поворот пальцем задаёт направление, а руль визуально вращается.
+const wheelEl=document.getElementById('wheelControl');let wheelPointer=null,wheelStartX=0,wheelStartAngle=0,wheelAngle=0;
+wheelEl.addEventListener('pointerdown',e=>{e.preventDefault();wheelPointer=e.pointerId;wheelStartX=e.clientX;wheelStartAngle=wheelAngle;wheelEl.setPointerCapture(e.pointerId);});
+wheelEl.addEventListener('pointermove',e=>{if(wheelPointer!==e.pointerId)return;e.preventDefault();wheelAngle=THREE.MathUtils.clamp(wheelStartAngle+(e.clientX-wheelStartX)*1.35,-150,150);keys.KeyA=wheelAngle < -12;keys.KeyD=wheelAngle > 12;wheelEl.style.transform=`rotate(${wheelAngle}deg)`;});
+function releaseWheel(e){if(wheelPointer!==e.pointerId)return;wheelPointer=null;keys.KeyA=false;keys.KeyD=false;wheelAngle*=.45;wheelEl.style.transform=`rotate(${wheelAngle}deg)`;}
+wheelEl.addEventListener('pointerup',releaseWheel);wheelEl.addEventListener('pointercancel',releaseWheel);wheelEl.addEventListener('lostpointercapture',releaseWheel);
+addEventListener('keydown',e=>{keys[e.code]=true;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='KeyR')reset();});
+addEventListener('keyup',e=>keys[e.code]=false);
+let speed=0,heading=0,drift=0;const velocity=new THREE.Vector3();const clock=new THREE.Clock();
+// Игровая модель физики: тяга двигателя, инерция, сопротивление воздуха, сцепление шин и ручник.
+const MAX_SPEED=1000/3.6, MAX_REVERSE=35/3.6, WHEELBASE=2.9;
+function reset(){speed=0;heading=0;velocity.set(0,0,0);car.position.set(0,0,0);car.rotation.y=0;}
+function update(dt){
+const gas=keys.KeyW||keys.ArrowUp,brake=keys.KeyS||keys.ArrowDown,left=keys.KeyA||keys.ArrowLeft,right=keys.KeyD||keys.ArrowRight,hand=keys.Space;
+const steer=(right?1:0)-(left?1:0);
+// Возвращена прежняя простая аркадная физика.
+if(gas)speed+=27*dt;
+if(brake)speed-=42*dt;
+if(!gas&&!brake)speed*=Math.pow(.985,dt*60);
+if(hand)speed*=Math.pow(.965,dt*60);
+speed=THREE.MathUtils.clamp(speed,-35,1000/3.6);
+const steerPower=(.35+Math.min(Math.abs(speed)/18,1.5))*dt;
+heading-=steer*steerPower*Math.sign(speed||1);
+car.rotation.y=heading;
+const forward=new THREE.Vector3(Math.sin(heading),0,Math.cos(heading));
+velocity.copy(forward).multiplyScalar(speed);
+car.position.addScaledVector(velocity,dt);
+if(Math.abs(car.position.x)>8.2){car.position.x=Math.sign(car.position.x)*8.2;speed*=.92;}
+// Боты едут вперёд и появляются снова далеко впереди, создавая постоянный трафик
+for(const b of bots){b.mesh.position.z += b.cruise*dt;if(b.mesh.position.z < car.position.z-90){b.mesh.position.z=car.position.z+900+Math.random()*900;b.mesh.position.x=b.lane;}}
+// Камера возвращена к прежнему виду от первого лица: закреплена в салоне.
+const cockpitPos=car.localToWorld(new THREE.Vector3(-.48,1.58,-.42));
+camera.position.copy(cockpitPos);
+camera.quaternion.copy(car.quaternion);
+camera.rotateY(Math.PI);
+camera.rotateX(-0.015);
+
+if(socket && socket.connected && roomCode && performance.now()-lastNetSend>80){lastNetSend=performance.now();socket.emit('drive-state',{x:car.position.x,y:car.position.y,z:car.position.z,heading});}
+document.getElementById('num').textContent=Math.round(Math.abs(speed)*3.6);
+document.getElementById('gear').textContent=(speed<-.5?'R':speed>.5?'D':'N')+(hand?' · РУЧНИК':' · '+(gas?'РАЗГОН':brake?'ТОРМОЖЕНИЕ':'ГОТОВ'));
+}
+
+// Онлайн-комнаты на 2–4 игрока через Socket.IO. Сервер запускается отдельно (server.js).
+let socket=null, roomCode='', myId='', remotePlayers=new Map(), lastNetSend=0;
+const onlineStatus=document.getElementById('onlineStatus'), roomInput=document.getElementById('roomInput'), copyRoom=document.getElementById('copyRoom');
+function onlineConnect(){
+ if(typeof window.io!=='function'){onlineStatus.textContent='Сервер не подключён. Разверни проект на Node.js-хостинге.';return;}
+ if(!socket){socket=window.io();socket.on('connect',()=>{myId=socket.id;onlineStatus.textContent='Соединение с сервером установлено.';});
+ socket.on('room-joined',d=>{roomCode=d.code;roomInput.value=roomCode;onlineStatus.textContent=`Комната ${roomCode} • игроков: ${d.players}`;copyRoom.style.display='block';});
+ socket.on('room-error',m=>onlineStatus.textContent=m);
+ socket.on('player-joined',d=>onlineStatus.textContent=`Комната ${roomCode} • игроков: ${d.players}`);
+ socket.on('player-left',d=>{const o=remotePlayers.get(d.id);if(o){scene.remove(o);remotePlayers.delete(d.id);}onlineStatus.textContent=`Комната ${roomCode} • игроков: ${d.players}`;});
+ socket.on('state',d=>{if(d.id===myId)return;let o=remotePlayers.get(d.id);if(!o){o=new THREE.Group();const paint=mat(0x36a9e8,.3,.5);const shell=new THREE.Mesh(new THREE.BoxGeometry(2.2,.9,4.4),paint);shell.position.y=.8;o.add(shell);const cabin=new THREE.Mesh(new THREE.BoxGeometry(1.7,.65,2),glassMat);cabin.position.set(0,1.5,-.25);o.add(cabin);scene.add(o);remotePlayers.set(d.id,o);}o.position.set(d.x,d.y,d.z);o.rotation.y=d.heading||0;});
+ }
+}
+function joinOnline(code,create=false){onlineConnect();if(!socket)return;const act=()=>socket.emit(create?'create-room':'join-room',create?{}:{code:code.trim().toUpperCase()});if(socket.connected)act();else socket.once('connect',act);}
+document.getElementById('createRoom').onclick=()=>joinOnline('',true);
+document.getElementById('joinRoom').onclick=()=>{if(!roomInput.value.trim()){onlineStatus.textContent='Введи код комнаты.';return;}joinOnline(roomInput.value,false);};
+copyRoom.onclick=async()=>{const url=new URL(location.href);url.searchParams.set('room',roomCode);try{await navigator.clipboard.writeText(url.toString());onlineStatus.textContent='Ссылка на комнату скопирована!';}catch{onlineStatus.textContent='Код комнаты: '+roomCode;}};
+const roomParam=new URLSearchParams(location.search).get('room');if(roomParam){roomInput.value=roomParam;setTimeout(()=>joinOnline(roomParam,false),1200);}
+
+document.getElementById('go').onclick=()=>{document.getElementById('start').style.display='none';};
+function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.04);update(dt);renderer.render(scene,camera);}animate();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+</script></body></html>
