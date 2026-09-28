@@ -1,7 +1,6 @@
 {
   "name": "bmw-x5-online",
   "version": "1.0.0",
-  "description": "BMW X5 Online Game",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
