@@ -13,10 +13,9 @@
 #status{top:16px;right:16px;color:#a9bdcb;font-size:12px}
 #start{position:fixed;inset:0;display:grid;place-items:center;background:rgba(3,8,14,.78);z-index:3}
 #touchControls{display:none;position:fixed;inset:0;z-index:2;pointer-events:none}
-#wheelControl{position:absolute;left:22px;bottom:78px;width:142px;height:142px;border:10px solid rgba(225,238,246,.82);border-radius:50%;background:radial-gradient(circle,rgba(20,35,48,.82) 0 18%,transparent 19%),rgba(10,24,36,.32);box-shadow:0 0 0 3px rgba(0,0,0,.3),inset 0 0 10px #000;pointer-events:auto;touch-action:none;user-select:none}
-#wheelControl:before,#wheelControl:after{content:"";position:absolute;background:rgba(225,238,246,.85);border-radius:5px;left:calc(50% - 5px);top:8px;width:10px;height:55px;transform-origin:50% 100%}
-#wheelControl:after{top:auto;bottom:8px;height:45px}
-.wheelHub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:36px;height:36px;border-radius:50%;background:#1b2d3c;border:2px solid #a9bdcb}
+#steerButtons{position:absolute;left:14px;bottom:76px;display:flex;gap:12px;pointer-events:auto}
+.steerBtn{width:68px;height:68px;border-radius:18px;border:1px solid rgba(255,255,255,.4);background:rgba(10,24,36,.78);color:#fff;font-size:32px;font-weight:bold;touch-action:none;user-select:none;-webkit-user-select:none;backdrop-filter:blur(5px)}
+.steerBtn.active{background:rgba(54,169,232,.85);color:#06121b}
 .pedals{position:absolute;right:18px;bottom:78px;display:flex;gap:10px;align-items:flex-end;pointer-events:auto}
 .pedal{width:66px;height:108px;border-radius:13px;border:1px solid rgba(255,255,255,.35);background:linear-gradient(135deg,rgba(35,54,68,.92),rgba(8,18,27,.92));color:#fff;font-size:14px;font-weight:bold;touch-action:none;user-select:none;display:flex;align-items:center;justify-content:center;writing-mode:vertical-rl;letter-spacing:2px}
 .pedal.gas{height:132px;background:linear-gradient(135deg,rgba(34,125,80,.92),rgba(8,48,30,.92))}
@@ -35,7 +34,8 @@
  #speed{right:10px;bottom:165px;min-width:112px;padding:9px 12px}
  #num{font-size:34px}
  .pad{bottom:75px}
- #wheelControl{left:14px;bottom:76px;width:116px;height:116px;border-width:8px}
+ #steerButtons{left:10px;bottom:76px;gap:8px}
+ .steerBtn{width:58px;height:58px;font-size:27px;border-radius:15px}
  .pedals{right:12px;bottom:76px;gap:7px}
  .pedal{width:52px;height:90px;font-size:12px}
  .pedal.gas{height:112px}
@@ -62,7 +62,7 @@ h1{margin:0 0 12px;font-size:27px}p{color:#c2d1dc;line-height:1.55}
  <button id="copyRoom" style="display:none;margin-top:7px;width:100%;padding:8px">Скопировать ссылку</button>
 </div>
 <div id="touchControls">
-  <div id="wheelControl" aria-label="Руль: веди пальцем влево или вправо"><div class="wheelHub"></div></div>
+  <div id="steerButtons"><button class="steerBtn" data-key="KeyA" aria-label="Поворот влево">◀</button><button class="steerBtn" data-key="KeyD" aria-label="Поворот вправо">▶</button></div>
   <div class="pedals">
     <button class="pedal" data-key="KeyS" aria-label="Тормоз">ТОРМОЗ</button>
     <button class="pedal gas" data-key="KeyW" aria-label="Газ">ГАЗ</button>
@@ -78,14 +78,14 @@ import { OBJLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
 import { MTLLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/MTLLoader.js';
 const scene=new THREE.Scene(); scene.background=new THREE.Color(0x9ac7e2); scene.fog=new THREE.Fog(0x9ac7e2,130,520);
 const camera=new THREE.PerspectiveCamera(68,innerWidth/innerHeight,.1,15000);
-const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'high-performance'});
-renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.25));renderer.shadowMap.enabled=false;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;document.body.appendChild(renderer.domElement);
-scene.add(new THREE.HemisphereLight(0xdceeff,0x59604e,2));
-const sun=new THREE.DirectionalLight(0xfff0d6,2.2);sun.position.set(-80,130,40);scene.add(sun);
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;document.body.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xdceeff,0x42483c,1.65));
+const sun=new THREE.DirectionalLight(0xffe4bd,3.0);sun.position.set(-80,130,40);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-55;sun.shadow.camera.right=55;sun.shadow.camera.top=90;sun.shadow.camera.bottom=-90;sun.shadow.camera.near=1;sun.shadow.camera.far=320;sun.shadow.bias=-0.00025;sun.shadow.normalBias=0.025;scene.add(sun);
 const mat=(c,r=.8,m=0)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m});
-const ground=new THREE.Mesh(new THREE.PlaneGeometry(1200,1200),mat(0x687c62));ground.rotation.x=-Math.PI/2;ground.position.y=-.15;scene.add(ground);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(1200,1200),mat(0x687c62));ground.rotation.x=-Math.PI/2;ground.position.y=-.15;ground.receiveShadow=true;scene.add(ground);
 const roadMat=mat(0x30363d),lineMat=mat(0xe7e4cf),sideMat=mat(0x929a9c);
-function box(w,h,d,material,x,y,z,parent=scene){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);o.position.set(x,y,z);parent.add(o);return o;}
+function box(w,h,d,material,x,y,z,parent=scene){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o;}
 // Длинная прямая дорога вперёд по оси Z
 box(18,.12,12000,roadMat,0,-.04,5900);
 // Разметка пунктиром на всей длине трассы
@@ -95,7 +95,7 @@ box(.35,.18,12000,sideMat,-9.15,.02,5900);box(.35,.18,12000,sideMat,9.15,.02,590
 for(const x of [-3,3]) for(let z=-100;z<=11900;z+=30) box(.09,.016,12,lineMat,x,.04,z);
 for(let i=-10;i<=10;i++){for(let j=-10;j<=10;j++){if(Math.abs(i)<2||Math.abs(j)<2)continue;let x=i*38+(Math.random()-.5)*8,z=j*38+(Math.random()-.5)*8;
 let w=12+Math.random()*13,d=12+Math.random()*13,h=10+Math.random()*55;
-let colors=[0x8b969d,0xc0b6a2,0x667b88,0xb6a18a,0x7c858a];let b=box(w,h,d,mat(colors[Math.floor(Math.random()*colors.length)]),x,h/2,z);
+let colors=[0x8b969d,0xc0b6a2,0x667b88,0xb6a18a,0x7c858a];let b=box(w,h,d,mat(colors[Math.floor(Math.random()*colors.length)]),x,h/2,z);b.castShadow=true;b.receiveShadow=true;
 }}
 // Движущиеся машины-боты на дороге
 const bots=[];
@@ -106,11 +106,11 @@ function makeBot(i){
  const paint=mat(botColors[i%botColors.length],.32,.35), win=new THREE.MeshStandardMaterial({color:0x182632,roughness:.2,metalness:.25});
  box(1.9,.62,3.8,paint,0,.72,0,g); box(1.55,.65,1.85,win,0,1.28,-.25,g);
  box(1.85,.16,.12,paint,0,.47,1.88,g); box(1.85,.14,.12,paint,0,.48,-1.88,g);
- for(const x of [-1,1]) for(const z of [-1.2,1.2]){const w=new THREE.Mesh(new THREE.CylinderGeometry(.36,.36,.22,12),rubber);w.rotation.z=Math.PI/2;w.position.set(x,.38,z);g.add(w);}
+ for(const x of [-1,1]) for(const z of [-1.2,1.2]){const w=new THREE.Mesh(new THREE.CylinderGeometry(.36,.36,.22,12),rubber);w.rotation.z=Math.PI/2;w.position.set(x,.38,z);w.castShadow=true;w.receiveShadow=true;g.add(w);}
  g.position.set([-6,-3,3,6][i%4],0,90+i*105);
  bots.push({mesh:g,cruise:22+(i%5)*7,lane:[-6,-3,3,6][i%4]});
 }
-for(let i=0;i<18;i++) makeBot(i);
+for(let i=0;i<42;i++) makeBot(i);
 const car=new THREE.Group();scene.add(car);
 // Stylized BMW X5 G05-inspired SUV body (approximation)
 const bodyMat=mat(0x172e4d,.28,.68), glassMat=new THREE.MeshStandardMaterial({color:0x17232c,roughness:.16,metalness:.45}), rim=mat(0xb8c3cc,.22,.85), grille=mat(0x080b0e,.25,.6), lamp=mat(0xeaf7ff,.18,.35);
@@ -146,6 +146,7 @@ const steeringHub=new THREE.Mesh(new THREE.CylinderGeometry(.105,.105,.08,20),bo
 // Передние стойки и нижняя рамка лобового стекла
 box(.11,.82,.13,bodyMat,-.96,1.78,.76,car);box(.11,.82,.13,bodyMat,.96,1.78,.76,car);
 box(1.9,.10,.14,bodyMat,0,2.12,.76,car);
+car.traverse(node=>{if(node.isMesh){node.castShadow=true;node.receiveShadow=true;}});
 car.position.set(0,0,0);
 // Load the user's detailed BMW X5 mesh. Keep the procedural cockpit as a fallback if the model fails.
 const modelRoot = new THREE.Group();
@@ -190,18 +191,14 @@ document.querySelectorAll('.touchBtn, .pedal').forEach(btn=>{
   btn.addEventListener('pointercancel',release);
   btn.addEventListener('pointerleave',release);
 });
-// Виртуальный руль: поворот пальцем задаёт направление, а руль визуально вращается.
-const wheelEl=document.getElementById('wheelControl');let wheelPointer=null,wheelStartX=0,wheelStartAngle=0,wheelAngle=0;
-wheelEl.addEventListener('pointerdown',e=>{e.preventDefault();wheelPointer=e.pointerId;wheelStartX=e.clientX;wheelStartAngle=wheelAngle;wheelEl.setPointerCapture(e.pointerId);});
-wheelEl.addEventListener('pointermove',e=>{if(wheelPointer!==e.pointerId)return;e.preventDefault();wheelAngle=THREE.MathUtils.clamp(wheelStartAngle+(e.clientX-wheelStartX)*1.35,-150,150);keys.KeyA=wheelAngle < -12;keys.KeyD=wheelAngle > 12;wheelEl.style.transform=`rotate(${wheelAngle}deg)`;});
-function releaseWheel(e){if(wheelPointer!==e.pointerId)return;wheelPointer=null;keys.KeyA=false;keys.KeyD=false;wheelAngle*=.45;wheelEl.style.transform=`rotate(${wheelAngle}deg)`;}
-wheelEl.addEventListener('pointerup',releaseWheel);wheelEl.addEventListener('pointercancel',releaseWheel);wheelEl.addEventListener('lostpointercapture',releaseWheel);
+// Кнопки экранного руля влево/вправо обрабатываются вместе с педалями.
 addEventListener('keydown',e=>{keys[e.code]=true;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='KeyR')reset();});
 addEventListener('keyup',e=>keys[e.code]=false);
 let speed=0,heading=0,drift=0;const velocity=new THREE.Vector3();const clock=new THREE.Clock();
 // Игровая модель физики: тяга двигателя, инерция, сопротивление воздуха, сцепление шин и ручник.
 const MAX_SPEED=1000/3.6, MAX_REVERSE=35/3.6, WHEELBASE=2.9;
-function reset(){speed=0;heading=0;velocity.set(0,0,0);car.position.set(0,0,0);car.rotation.y=0;}
+function reset(){speed=0;heading=0;velocity.set(0,0,0);car.traverse(node=>{if(node.isMesh){node.castShadow=true;node.receiveShadow=true;}});
+car.position.set(0,0,0);car.rotation.y=0;}
 function update(dt){
 const gas=keys.KeyW||keys.ArrowUp,brake=keys.KeyS||keys.ArrowDown,left=keys.KeyA||keys.ArrowLeft,right=keys.KeyD||keys.ArrowRight,hand=keys.Space;
 const steer=(right?1:0)-(left?1:0);
@@ -249,7 +246,7 @@ function onlineConnect(){
  socket.on('room-error',m=>onlineStatus.textContent=m);
  socket.on('player-joined',d=>onlineStatus.textContent=`Комната ${roomCode} • игроков: ${d.players}`);
  socket.on('player-left',d=>{const o=remotePlayers.get(d.id);if(o){scene.remove(o);remotePlayers.delete(d.id);}onlineStatus.textContent=`Комната ${roomCode} • игроков: ${d.players}`;});
- socket.on('state',d=>{if(d.id===myId)return;let o=remotePlayers.get(d.id);if(!o){o=new THREE.Group();const paint=mat(0x36a9e8,.3,.5);const shell=new THREE.Mesh(new THREE.BoxGeometry(2.2,.9,4.4),paint);shell.position.y=.8;o.add(shell);const cabin=new THREE.Mesh(new THREE.BoxGeometry(1.7,.65,2),glassMat);cabin.position.set(0,1.5,-.25);o.add(cabin);scene.add(o);remotePlayers.set(d.id,o);}o.position.set(d.x,d.y,d.z);o.rotation.y=d.heading||0;});
+ socket.on('state',d=>{if(d.id===myId)return;let o=remotePlayers.get(d.id);if(!o){o=new THREE.Group();const paint=mat(0x36a9e8,.3,.5);const shell=new THREE.Mesh(new THREE.BoxGeometry(2.2,.9,4.4),paint);shell.position.y=.8;shell.castShadow=true;shell.receiveShadow=true;o.add(shell);const cabin=new THREE.Mesh(new THREE.BoxGeometry(1.7,.65,2),glassMat);cabin.position.set(0,1.5,-.25);cabin.castShadow=true;cabin.receiveShadow=true;o.add(cabin);scene.add(o);remotePlayers.set(d.id,o);}o.position.set(d.x,d.y,d.z);o.rotation.y=d.heading||0;});
  }
 }
 function joinOnline(code,create=false){onlineConnect();if(!socket)return;const act=()=>socket.emit(create?'create-room':'join-room',create?{}:{code:code.trim().toUpperCase()});if(socket.connected)act();else socket.once('connect',act);}
