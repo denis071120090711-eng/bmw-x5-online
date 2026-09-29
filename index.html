@@ -13,9 +13,11 @@
 #status{top:16px;right:16px;color:#a9bdcb;font-size:12px}
 #start{position:fixed;inset:0;display:grid;place-items:center;background:rgba(3,8,14,.78);z-index:3}
 #touchControls{display:none;position:fixed;inset:0;z-index:2;pointer-events:none}
-#steerButtons{position:absolute;left:14px;bottom:76px;display:flex;gap:12px;pointer-events:auto}
-.steerBtn{width:68px;height:68px;border-radius:18px;border:1px solid rgba(255,255,255,.4);background:rgba(10,24,36,.78);color:#fff;font-size:32px;font-weight:bold;touch-action:none;user-select:none;-webkit-user-select:none;backdrop-filter:blur(5px)}
-.steerBtn.active{background:rgba(54,169,232,.85);color:#06121b}
+#steerButtons{display:none}
+#mobileWheel{z-index:2;position:absolute;left:16px;bottom:72px;width:150px;height:150px;border-radius:50%;border:11px solid rgba(235,244,250,.9);background:radial-gradient(circle,rgba(20,35,48,.9) 0 20%,transparent 21%),rgba(10,24,36,.45);box-shadow:0 5px 24px #0008,inset 0 0 20px #000;pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;transform:rotate(0deg);will-change:transform}
+#mobileWheel::before,#mobileWheel::after{content:"";position:absolute;left:50%;top:12px;width:11px;height:55px;transform:translateX(-50%);border-radius:7px;background:#e9f3f7;transform-origin:50% 58px}
+#mobileWheel::after{top:50%;left:50%;width:55px;height:11px;transform:translate(-50%,-50%);border-radius:7px}
+#mobileWheel .hub{position:absolute;left:50%;top:50%;width:38px;height:38px;transform:translate(-50%,-50%);border-radius:50%;background:#1b2d3c;border:2px solid #d6e8f2;box-shadow:0 2px 8px #0008}
 .pedals{position:absolute;right:18px;bottom:78px;display:flex;gap:10px;align-items:flex-end;pointer-events:auto}
 .pedal{width:66px;height:108px;border-radius:13px;border:1px solid rgba(255,255,255,.35);background:linear-gradient(135deg,rgba(35,54,68,.92),rgba(8,18,27,.92));color:#fff;font-size:14px;font-weight:bold;touch-action:none;user-select:none;display:flex;align-items:center;justify-content:center;writing-mode:vertical-rl;letter-spacing:2px}
 .pedal.gas{height:132px;background:linear-gradient(135deg,rgba(34,125,80,.92),rgba(8,48,30,.92))}
@@ -34,8 +36,10 @@
  #speed{right:10px;bottom:165px;min-width:112px;padding:9px 12px}
  #num{font-size:34px}
  .pad{bottom:75px}
- #steerButtons{left:10px;bottom:76px;gap:8px}
- .steerBtn{width:58px;height:58px;font-size:27px;border-radius:15px}
+ #mobileWheel{left:10px;bottom:72px;width:122px;height:122px;border-width:9px}
+ #mobileWheel::before{top:8px;width:9px;height:44px;transform-origin:50% 48px}
+ #mobileWheel::after{width:44px;height:9px}
+ #mobileWheel .hub{width:32px;height:32px}
  .pedals{right:12px;bottom:76px;gap:7px}
  .pedal{width:52px;height:90px;font-size:12px}
  .pedal.gas{height:112px}
@@ -62,7 +66,7 @@ h1{margin:0 0 12px;font-size:27px}p{color:#c2d1dc;line-height:1.55}
  <button id="copyRoom" style="display:none;margin-top:7px;width:100%;padding:8px">Скопировать ссылку</button>
 </div>
 <div id="touchControls">
-  <div id="steerButtons"><button class="steerBtn" data-key="KeyA" aria-label="Поворот влево">◀</button><button class="steerBtn" data-key="KeyD" aria-label="Поворот вправо">▶</button></div>
+  <div id="mobileWheel" aria-label="Руль: проведи пальцем влево или вправо"><div class="hub"></div></div>
   <div class="pedals">
     <button class="pedal" data-key="KeyS" aria-label="Тормоз">ТОРМОЗ</button>
     <button class="pedal gas" data-key="KeyW" aria-label="Газ">ГАЗ</button>
@@ -72,7 +76,8 @@ h1{margin:0 0 12px;font-size:27px}p{color:#c2d1dc;line-height:1.55}
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}
 </script>
-<script src="/socket.io/socket.io.js"></script>\n<script type="module">
+<script src="/socket.io/socket.io.js"></script>
+<script type="module">
 import * as THREE from 'three';
 import { OBJLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/OBJLoader.js';
 import { MTLLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/MTLLoader.js';
@@ -242,6 +247,10 @@ for(let x=-citySpan;x<=citySpan;x+=blockStep){for(let z=-citySpan;z<=citySpan;z+
  const lx=x+roadWidth/2+4;box(.18,5,.18,mat(0x34383b),lx,2.5,z);
  const head=box(.9,.16,.35,lampMat,lx,5,z);head.castShadow=false;
 }}
+// Координаты основных улиц для трафика. Боты теперь ездят по всей карте, а не только по одной дороге.
+const roadCoords=[];
+for(let q=-citySpan;q<=citySpan;q+=blockStep) roadCoords.push(q);
+
 // Движущиеся машины-боты на дороге
 const bots=[];
 const rubber=mat(0x111315);
@@ -253,10 +262,16 @@ function makeBot(i){
  box(1.9,.62,3.8,paint,0,.72,0,g); box(1.55,.65,1.85,win,0,1.28,-.25,g);
  box(1.85,.16,.12,paint,0,.47,1.88,g); box(1.85,.14,.12,paint,0,.48,-1.88,g);
  for(const x of [-1,1]) for(const z of [-1.2,1.2]){const wg=new THREE.Group();wg.position.set(x,.38,z);const w=new THREE.Mesh(new THREE.CylinderGeometry(.36,.36,.22,16),rubber);w.rotation.z=Math.PI/2;w.castShadow=true;w.receiveShadow=true;wg.add(w);g.add(wg);botWheels.push(wg);}
- g.position.set([-6,-3,3,6][i%4],0,90+i*105);
- bots.push({mesh:g,wheels:botWheels,cruise:22+(i%5)*7,lane:[-6,-3,3,6][i%4]});
+ const axis=i%2===0?'z':'x';
+ const road=roadCoords[(i*3)%roadCoords.length];
+ const lane=(i%4<2?-5.5:5.5);
+ const dir=(i%4===0||i%4===1)?1:-1;
+ const cruise=18+(i%7)*4;
+ if(axis==='z'){g.position.set(road+lane,0,-citySpan-(i%9)*70);g.rotation.y=dir>0?0:Math.PI;}
+ else{g.position.set(-citySpan-(i%9)*70,0,road+lane);g.rotation.y=dir>0?Math.PI/2:-Math.PI/2;}
+ bots.push({mesh:g,wheels:botWheels,cruise,lane,axis,road,dir});
 }
-for(let i=0;i<42;i++) makeBot(i);
+for(let i=0;i<48;i++) makeBot(i);
 const car=new THREE.Group();scene.add(car);
 const carWheels=[];
 // Stylized BMW X5 G05-inspired SUV body (approximation)
@@ -321,6 +336,35 @@ new MTLLoader().load('./assets/BMW_X_5.mtl', materials => {
   }, undefined, err => { modelMessage.textContent='Не удалось загрузить OBJ-модель'; console.error(err); });
 }, undefined, err => { modelMessage.textContent='Не удалось загрузить материалы модели'; console.error(err); });
 const keys={};
+let touchSteer=0;
+let wheelVisual=0;
+let wheelPointerId=null;
+let wheelStartX=0;
+let wheelStartRotation=0;
+const mobileWheel=document.getElementById('mobileWheel');
+function setWheelVisual(v){
+  wheelVisual=v;
+  if(mobileWheel) mobileWheel.style.transform=`rotate(${v}deg)`;
+}
+if(mobileWheel){
+  mobileWheel.addEventListener('pointerdown',e=>{
+    wheelPointerId=e.pointerId; wheelStartX=e.clientX; wheelStartRotation=wheelVisual;
+    mobileWheel.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  mobileWheel.addEventListener('pointermove',e=>{
+    if(wheelPointerId!==e.pointerId)return;
+    const dx=e.clientX-wheelStartX;
+    const rot=THREE.MathUtils.clamp(wheelStartRotation+dx*1.05,-135,135);
+    setWheelVisual(rot); touchSteer=THREE.MathUtils.clamp(rot/135,-1,1); e.preventDefault();
+  });
+  const releaseWheel=e=>{
+    if(wheelPointerId!==e.pointerId)return;
+    wheelPointerId=null; touchSteer=0; setWheelVisual(0); e.preventDefault();
+  };
+  mobileWheel.addEventListener('pointerup',releaseWheel);
+  mobileWheel.addEventListener('pointercancel',releaseWheel);
+  mobileWheel.addEventListener('lostpointercapture',()=>{wheelPointerId=null;touchSteer=0;setWheelVisual(0);});
+}
 let cameraMode='third'; // По умолчанию — вид сзади машины.
 addEventListener('keydown',e=>{
  if(e.code==='KeyC' && !e.repeat){
@@ -343,29 +387,32 @@ addEventListener('keydown',e=>{keys[e.code]=true;if(['Space','ArrowUp','ArrowDow
 addEventListener('keyup',e=>keys[e.code]=false);
 let speed=0,heading=0,drift=0,steerAngle=0,bodyPitch=0,bodyRoll=0;const velocity=new THREE.Vector3();const clock=new THREE.Clock();
 // Игровая модель физики: тяга двигателя, инерция, сопротивление воздуха, сцепление шин и ручник.
-const MAX_SPEED=1000/3.6, MAX_REVERSE=35/3.6, WHEELBASE=2.9;
+const MAX_SPEED=5000/3.6, MAX_REVERSE=35/3.6, WHEELBASE=2.9;
 function reset(){speed=0;heading=0;velocity.set(0,0,0);car.traverse(node=>{if(node.isMesh){node.castShadow=true;node.receiveShadow=true;}});
 car.position.set(0,0,0);car.rotation.y=0;}
 function update(dt){
 const gas=keys.KeyW||keys.ArrowUp,brake=keys.KeyS||keys.ArrowDown,left=keys.KeyA||keys.ArrowLeft,right=keys.KeyD||keys.ArrowRight,hand=keys.Space;
-const steerInput=(left?1:0)-(right?1:0); // Исправлено: A/← влево, D/→ вправо
+const keySteer=(left?1:0)-(right?1:0);
+const steerInput=Math.abs(touchSteer)>0.01?touchSteer:keySteer; // Телефонный руль имеет приоритет над клавишами
 // Более плавная автомобильная физика: тяга, тормоза, сопротивление и сцепление.
 const forward=new THREE.Vector3(Math.sin(heading),0,Math.cos(heading));
 const rightVec=new THREE.Vector3(forward.z,0,-forward.x);
 const lateralSpeed=velocity.dot(rightVec);
 const traction=hand?0.42:0.88;
-const engineForce=gas?31:0;
+const engineForce=gas?620:0;
 const brakeForce=brake?(speed>0?62:34):0;
 if(gas){speed+=engineForce*dt;}
 if(brake){if(speed>0.8)speed=Math.max(0,speed-brakeForce*dt);else speed-=34*dt;}
 if(!gas&&!brake)speed*=Math.exp(-(hand?1.65:0.42)*dt);
 if(hand)speed*=Math.exp(-.35*dt);
-speed=THREE.MathUtils.clamp(speed,-9.7,55.5);
+speed=THREE.MathUtils.clamp(speed,-MAX_REVERSE,MAX_SPEED);
 // Руль чувствительнее на малой скорости и спокойнее на высокой.
-const maxSteer=THREE.MathUtils.lerp(.62,.20,THREE.MathUtils.clamp(Math.abs(speed)/45,0,1));
+const highSpeedT=THREE.MathUtils.clamp(Math.abs(speed)/MAX_SPEED,0,1);
+const maxSteer=THREE.MathUtils.lerp(.62,.015,THREE.MathUtils.clamp(Math.abs(speed)/220,0,1));
+const steeringStability=THREE.MathUtils.lerp(1,.16,highSpeedT);
 steerAngle=THREE.MathUtils.damp(steerAngle,steerInput*maxSteer,7,dt);
 const wheelbase=2.9;
-const yawRate=Math.abs(speed)>0.05 ? (speed/wheelbase)*Math.tan(steerAngle) : 0;
+const yawRate=Math.abs(speed)>0.05 ? (speed/wheelbase)*Math.tan(steerAngle)*steeringStability : 0;
 heading+=yawRate*dt;
 // Боковой занос постепенно гасится сцеплением шин; ручник позволяет скользить.
 const newForward=new THREE.Vector3(Math.sin(heading),0,Math.cos(heading));
@@ -387,20 +434,36 @@ car.rotation.z=bodyRoll;
 car.rotation.x=bodyPitch;
 // Город открыт для свободного движения; мягкое торможение у края карты.
 if(Math.abs(car.position.x)>1450||Math.abs(car.position.z)>1450){speed*=Math.exp(-1.8*dt);}
-// Трафик движется по улицам, колёса вращаются; столкновение с ботом сбрасывает скорость.
+// Трафик движется по всей сетке улиц; боты не висят на одной полосе.
 for(const b of bots){
- b.mesh.position.z += b.cruise*dt;
- for(const w of b.wheels)w.rotation.x -= b.cruise/.36*dt;
- if(b.mesh.position.z < car.position.z-90){b.mesh.position.z=car.position.z+900+Math.random()*900;b.mesh.position.x=b.lane;}
+ const ds=b.dir*b.cruise*dt;
+ if(b.axis==='z') b.mesh.position.z += ds;
+ else b.mesh.position.x += ds;
+ for(const w of b.wheels) w.rotation.x -= b.cruise/.36*dt;
+ const lim=citySpan+120;
+ if(b.axis==='z' && (b.mesh.position.z>lim || b.mesh.position.z<-lim)){
+   b.mesh.position.z=b.dir>0?-lim:lim;
+   b.mesh.position.x=b.road+b.lane;
+ }
+ if(b.axis==='x' && (b.mesh.position.x>lim || b.mesh.position.x<-lim)){
+   b.mesh.position.x=b.dir>0?-lim:lim;
+   b.mesh.position.z=b.road+b.lane;
+ }
  const dx=car.position.x-b.mesh.position.x,dz=car.position.z-b.mesh.position.z;
- if(Math.abs(dx)<2.6&&Math.abs(dz)<4.0){speed*=Math.exp(-3.2*dt);car.position.x+=Math.sign(dx||1)*2.0*dt;}
+ if(Math.abs(dx)<2.8&&Math.abs(dz)<4.2){
+   speed*=Math.exp(-2.6*dt);
+   car.position.x+=Math.sign(dx||1)*1.5*dt;
+   car.position.z+=Math.sign(dz||1)*1.5*dt;
+ }
 }
 // Вращение и поворот передних колёс.
 for(const w of carWheels){w.rotation.x -= speed/.49*dt;w.rotation.y=w.userData.front?-steerAngle:0;}
 cabinWheel.rotation.z=-steerAngle*1.8;
+if(mobileWheel && wheelPointerId===null) setWheelVisual(THREE.MathUtils.lerp(0,keySteer*135,Math.min(1,dt*10)));
 // Камера: C переключает вид от третьего лица и из салона.
 if(cameraMode==='third'){
- const desiredPos=car.localToWorld(new THREE.Vector3(0,4.8,-12.5));
+ const followDist=12.5+Math.min(Math.abs(speed)*0.012,34);
+ const desiredPos=car.localToWorld(new THREE.Vector3(0,4.8,-followDist));
  const targetPos=car.localToWorld(new THREE.Vector3(0,1.25,3.0));
  camera.position.lerp(desiredPos,1-Math.exp(-4.5*dt));
  camera.lookAt(targetPos);
@@ -410,6 +473,7 @@ if(cameraMode==='third'){
 }
 if(socket&&socket.connected&&roomCode&&performance.now()-lastNetSend>80){lastNetSend=performance.now();socket.emit('drive-state',{x:car.position.x,y:car.position.y,z:car.position.z,heading});}
 document.getElementById('num').textContent=Math.round(Math.abs(speed)*3.6);
+if(Math.abs(speed)>4900/3.6) document.getElementById('gear').textContent=(speed>=0?'D':'R')+' · МАКС. 5000 КМ/Ч';
 document.getElementById('gear').textContent=(speed<-.5?'R':speed>.5?'D':'N')+(hand?' · РУЧНИК':' · '+(gas?'РАЗГОН':brake?'ТОРМОЖЕНИЕ':'ГОТОВ'));
 }
 
