@@ -68,7 +68,7 @@ h1{margin:0 0 12px;font-size:27px}p{color:#c2d1dc;line-height:1.55}
     <button class="pedal gas" data-key="KeyW" aria-label="Газ">ГАЗ</button>
   </div>
 </div>
-<div id="start"><div class="card"><h1>URBAN DRIVE ENGINE</h1><p>Первый прототип собственного 3D-движка: машина, город, камера и базовая физика. Управление — WASD или стрелки, ручник — пробел.</p><button id="go">ЗАПУСТИТЬ ИГРУ</button></div></div>
+<div id="start"><div class="card"><h1>URBAN DRIVE ENGINE</h1><p>Городской 3D-движок: свободная езда, улучшенная физика, тени и трафик. Управление — WASD или стрелки, ручник — пробел.</p><button id="go">ЗАПУСТИТЬ ИГРУ</button></div></div>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}
 </script>
@@ -83,19 +83,164 @@ renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(deviceP
 scene.add(new THREE.HemisphereLight(0xdceeff,0x42483c,1.65));
 const sun=new THREE.DirectionalLight(0xffe4bd,3.0);sun.position.set(-80,130,40);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-55;sun.shadow.camera.right=55;sun.shadow.camera.top=90;sun.shadow.camera.bottom=-90;sun.shadow.camera.near=1;sun.shadow.camera.far=320;sun.shadow.bias=-0.00025;sun.shadow.normalBias=0.025;scene.add(sun);
 const mat=(c,r=.8,m=0)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m});
-const ground=new THREE.Mesh(new THREE.PlaneGeometry(1200,1200),mat(0x687c62));ground.rotation.x=-Math.PI/2;ground.position.y=-.15;ground.receiveShadow=true;scene.add(ground);
-const roadMat=mat(0x30363d),lineMat=mat(0xe7e4cf),sideMat=mat(0x929a9c);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(3200,3200),mat(0x65775b));ground.rotation.x=-Math.PI/2;ground.position.y=-.15;ground.receiveShadow=true;scene.add(ground);
+const roadMat=mat(0x30343a),lineMat=mat(0xe8e1c9),sideMat=mat(0xa9aaa5),sidewalkMat=mat(0x9b9c96);
 function box(w,h,d,material,x,y,z,parent=scene){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o;}
-// Длинная прямая дорога вперёд по оси Z
-box(18,.12,12000,roadMat,0,-.04,5900);
-// Разметка пунктиром на всей длине трассы
-for(let z=-100;z<=11900;z+=18){box(.16,.018,7,lineMat,0,.035,z);}
-// Обочины и разделительные линии
-box(.35,.18,12000,sideMat,-9.15,.02,5900);box(.35,.18,12000,sideMat,9.15,.02,5900);
-for(const x of [-3,3]) for(let z=-100;z<=11900;z+=30) box(.09,.016,12,lineMat,x,.04,z);
-for(let i=-10;i<=10;i++){for(let j=-10;j<=10;j++){if(Math.abs(i)<2||Math.abs(j)<2)continue;let x=i*38+(Math.random()-.5)*8,z=j*38+(Math.random()-.5)*8;
-let w=12+Math.random()*13,d=12+Math.random()*13,h=10+Math.random()*55;
-let colors=[0x8b969d,0xc0b6a2,0x667b88,0xb6a18a,0x7c858a];let b=box(w,h,d,mat(colors[Math.floor(Math.random()*colors.length)]),x,h/2,z);b.castShadow=true;b.receiveShadow=true;
+// Открытый городской мир: сетка улиц, перекрёстки, кварталы, парки и высотные здания.
+const citySpan=1400, blockStep=180, roadWidth=22;
+// Асфальтированные улицы по сетке города.
+for(let x=-citySpan;x<=citySpan;x+=blockStep){
+  box(roadWidth,.12,citySpan*2+roadWidth,roadMat,x,-.04,0);
+  box(.18,.02,citySpan*2,lineMat,x,.035,0);
+  box(1.1,.16,citySpan*2+roadWidth,sidewalkMat,x-roadWidth/2-1,.02,0);
+  box(1.1,.16,citySpan*2+roadWidth,sidewalkMat,x+roadWidth/2+1,.02,0);
+}
+for(let z=-citySpan;z<=citySpan;z+=blockStep){
+  box(citySpan*2+roadWidth,.12,roadWidth,roadMat,0,-.04,z);
+  box(citySpan*2,.02,.18,lineMat,0,.035,z);
+  box(citySpan*2+roadWidth,.16,1.1,sidewalkMat,0,.02,z-roadWidth/2-1);
+  box(citySpan*2+roadWidth,.16,1.1,sidewalkMat,0,.02,z+roadWidth/2+1);
+}
+// Дорожная разметка и пешеходные переходы на перекрёстках.
+for(let x=-citySpan;x<=citySpan;x+=blockStep){
+  for(let z=-citySpan;z<=citySpan;z+=26){box(.13,.018,9,lineMat,x,.045,z);}
+  for(let z=-citySpan;z<=citySpan;z+=blockStep){for(let k=0;k<7;k++){box(1.2,.025,7,mat(0xe8e8df),x-15+k*5,.055,z-18);box(1.2,.025,7,mat(0xe8e8df),x-15+k*5,.055,z+18);}}
+}
+for(let z=-citySpan;z<=citySpan;z+=blockStep){
+  for(let x=-citySpan;x<=citySpan;x+=26){box(9,.018,.13,lineMat,x,.045,z);}
+  for(let x=-citySpan;x<=citySpan;x+=blockStep){for(let k=0;k<7;k++){box(7,.025,1.2,mat(0xe8e8df),x-18,.055,z-15+k*5);box(7,.025,1.2,mat(0xe8e8df),x+18,.055,z-15+k*5);}}
+}
+const buildingColors=[0x7d858b,0xb8a58f,0x5f6c78,0xa99582,0x727a83,0xc8c0b4,0x55626e,0x8d6b5c,0x9aa0a6];
+const glassTints=[0x18313f,0x203d4d,0x142934,0x2b4655];
+
+// NYC-inspired facade textures: dense windows, warm interior lights and darker mullions.
+function facadeTexture(base, lit=0.32, cols=8, rows=24){
+  const c=document.createElement('canvas'); c.width=256; c.height=512;
+  const x=c.getContext('2d');
+  x.fillStyle='#'+base.toString(16).padStart(6,'0'); x.fillRect(0,0,c.width,c.height);
+  for(let r=0;r<rows;r++) for(let q=0;q<cols;q++){
+    const px=8+q*(240/cols), py=8+r*(496/rows);
+    const on=Math.random()<lit;
+    const w=Math.max(7,210/cols), h=Math.max(7,390/rows);
+    x.fillStyle=on?(Math.random()<.62?'#f5d990':'#9fc4d6'):'#18242c';
+    x.fillRect(px,py,w,h);
+    if(on){x.fillStyle='rgba(255,255,255,.10)';x.fillRect(px,py,w,2);}
+  }
+  return new THREE.CanvasTexture(c);
+}
+const facadeCache={};
+function facadeMaterial(base){
+  const key=base.toString(16);
+  if(!facadeCache[key]){
+    const tex=facadeTexture(base,.28+Math.random()*.20,8,26);
+    tex.wrapS=tex.wrapT=THREE.RepeatWrapping; tex.repeat.set(1,1); tex.anisotropy=4;
+    facadeCache[key]=new THREE.MeshStandardMaterial({map:tex,roughness:.68,metalness:.12,emissiveMap:tex,emissive:0x4b3424,emissiveIntensity:.24});
+  }
+  return facadeCache[key];
+}
+const rooftopMat=mat(0x3a3e42,.9,.15), steelMat=mat(0x596068,.5,.55), brickMat=mat(0x714c43,.92,.05);
+function addRoofDetails(group,w,h,d,type){
+  const roofY=h+.15;
+  if(type==='skyscraper'){
+    const core=box(w*.30,2.8,d*.30,steelMat,0,roofY+1.4,0,group);
+    const a=box(.35,3.6,.35,steelMat,-w*.22,roofY+1.8,-d*.12,group);
+    const b=box(.35,3.6,.35,steelMat,w*.22,roofY+1.8,d*.12,group);
+    core.castShadow=a.castShadow=b.castShadow=true;
+  } else if(type==='office') {
+    for(let i=0;i<3;i++) box(1.2,1.0,1.1,rooftopMat,(i-1)*2.1,roofY+.5,(i%2?1:-1)*d*.16,group);
+  } else {
+    const tank=new THREE.Group(); tank.position.set(w*.22,roofY+.9,-d*.18); group.add(tank);
+    const cyl=new THREE.Mesh(new THREE.CylinderGeometry(1.25,1.25,1.8,14),mat(0x6a473b,.85,.08)); cyl.castShadow=true;cyl.receiveShadow=true;tank.add(cyl);
+    for(let i=0;i<4;i++) box(.10,1.5,.10,steelMat,Math.cos(i*Math.PI/2)*1.0,-.85,Math.sin(i*Math.PI/2)*1.0,tank);
+  }
+}
+function makeNYCBuilding(bx,bz){
+  const roll=Math.random();
+  if(roll<.18){
+    // Tall glass/stone tower with setbacks.
+    const g=new THREE.Group(); g.position.set(bx,0,bz); scene.add(g);
+    let w=30+Math.random()*28,d=30+Math.random()*28,h=110+Math.random()*210;
+    const core=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color:glassTints[Math.floor(Math.random()*glassTints.length)],roughness:.28,metalness:.46}));
+    core.position.y=h/2; core.castShadow=core.receiveShadow=true; g.add(core);
+    // warm window slabs on the main mass
+    const skin=facadeMaterial(0x31434e); const front=new THREE.Mesh(new THREE.PlaneGeometry(w*.93,h*.94),skin); front.position.set(0,h/2,d/2+.018); g.add(front);
+    const back=front.clone(); back.position.z=-d/2-.018; back.rotation.y=Math.PI; g.add(back);
+    const left=new THREE.Mesh(new THREE.PlaneGeometry(d*.93,h*.94),skin); left.position.set(-w/2-.018,h/2,0); left.rotation.y=Math.PI/2; g.add(left);
+    const right=left.clone(); right.position.x=w/2+.018; right.rotation.y=-Math.PI/2; g.add(right);
+    // setbacks create a Manhattan skyline silhouette.
+    if(h>210){
+      const w2=w*.72,d2=d*.72,h2=h*.18; const tier=new THREE.Mesh(new THREE.BoxGeometry(w2,h2,d2),new THREE.MeshStandardMaterial({color:0x6a737a,roughness:.34,metalness:.34})); tier.position.y=h+h2/2; tier.castShadow=tier.receiveShadow=true; g.add(tier);
+    }
+    if(Math.random()<.65) addRoofDetails(g,w,h,d,'skyscraper');
+  } else if(roll<.55){
+    // Mid-rise Manhattan office/residential block.
+    const g=new THREE.Group(); g.position.set(bx,0,bz); scene.add(g);
+    const w=34+Math.random()*30,d=28+Math.random()*34,h=44+Math.random()*96;
+    const base=box(w,h,d,facadeMaterial(buildingColors[Math.floor(Math.random()*buildingColors.length)]),0,h/2,0,g);
+    base.castShadow=base.receiveShadow=true;
+    // Architectural side columns and cornice.
+    const colMat=mat(0x596168,.56,.42);
+    for(const xx of [-w*.40,-w*.20,0,w*.20,w*.40]) box(.16,h*.88,.20,colMat,xx,h*.49,d/2+.035,g);
+    box(w*.95,1.2,d*.98,colMat,0,h+.6,0,g);
+    if(Math.random()<.42) box(w*.72,.8,d*.72,brickMat,0,h+2.0,0,g);
+    addRoofDetails(g,w,h,d,'office');
+  } else {
+    // NYC brownstone / compact residential block.
+    const g=new THREE.Group(); g.position.set(bx,0,bz); scene.add(g);
+    const w=24+Math.random()*18,d=24+Math.random()*18,h=18+Math.random()*28;
+    const base=box(w,h,d,Math.random()<.65?brickMat:facadeMaterial(buildingColors[Math.floor(Math.random()*buildingColors.length)]),0,h/2,0,g);
+    base.castShadow=base.receiveShadow=true;
+    // Stone steps and small entrance canopy.
+    box(w*.18,.35,d*.10,mat(0xbbb7ad,.9),0,.18,d/2+.16,g);
+    box(w*.26,.12,.8,steelMat,0,h*.45,d/2+.18,g);
+    for(let y=3;y<h-2;y+=5){
+      for(let xx=-w*.32;xx<=w*.32;xx+=w*.32){
+        const wm=facadeMaterial(0x3f3431); box(.06,1.05,.04,wm,xx,y,d/2+.04,g);
+      }
+    }
+    if(Math.random()<.55) addRoofDetails(g,w,h,d,'residential');
+  }
+}
+
+// Застройка кварталов: плотный Manhattan-style downtown, brownstones, офисные башни и небольшие скверы.
+for(let bx=-citySpan+blockStep/2;bx<citySpan;bx+=blockStep){
+  for(let bz=-citySpan+blockStep/2;bz<citySpan;bz+=blockStep){
+    // Центральная зона плотнее, окраины немного зеленее.
+    const dist=Math.hypot(bx,bz);
+    const park=dist>900 ? Math.random()<.18 : Math.random()<.09;
+    if(park){
+      box(112,.12,112,mat(0x3f6840),bx,-.02,bz);
+      for(let n=0;n<15;n++){
+        const tx=bx+(Math.random()-.5)*92,tz=bz+(Math.random()-.5)*92;
+        const trunk=box(.8,3.3,.8,mat(0x60452d),tx,1.65,tz); trunk.castShadow=true;
+        const crown=new THREE.Mesh(new THREE.IcosahedronGeometry(3.6,1),mat([0x285c35,0x397044,0x557f48][n%3])); crown.position.set(tx,4.7,tz); crown.castShadow=true;crown.receiveShadow=true;scene.add(crown);
+      }
+      continue;
+    }
+    const lots=2+Math.floor(Math.random()*3);
+    for(let n=0;n<lots;n++){
+      const x=bx+(Math.random()-.5)*78;
+      const z=bz+(Math.random()-.5)*78;
+      makeNYCBuilding(x,z);
+    }
+  }
+}
+
+// Несколько крупных skyline towers вдоль центральной части карты, чтобы город читался как Manhattan.
+const skyline=[[-360,-520,62,250],[-120,-610,70,310],[150,-520,58,220],[420,-640,76,285],[-520,180,66,230],[520,220,74,260]];
+for(const [x,z,w,h] of skyline){
+  const g=new THREE.Group();g.position.set(x,0,z);scene.add(g);
+  const d=w*.78;
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color:0x526775,roughness:.25,metalness:.48}));m.position.y=h/2;m.castShadow=m.receiveShadow=true;g.add(m);
+  const s1=new THREE.Mesh(new THREE.PlaneGeometry(w*.90,h*.92),facadeMaterial(0x2e3b45));s1.position.set(0,h/2,d/2+.02);g.add(s1);
+  const s2=s1.clone();s2.position.z=-d/2-.02;s2.rotation.y=Math.PI;g.add(s2);
+  const roof=box(w*.52,5,d*.52,steelMat,0,h+2.5,0,g);roof.castShadow=true;
+}
+// Фонари вдоль улиц.
+const lampMat=new THREE.MeshStandardMaterial({color:0xffe6ad,emissive:0xffc66b,emissiveIntensity:1.5});
+for(let x=-citySpan;x<=citySpan;x+=blockStep){for(let z=-citySpan;z<=citySpan;z+=90){
+ const lx=x+roadWidth/2+4;box(.18,5,.18,mat(0x34383b),lx,2.5,z);
+ const head=box(.9,.16,.35,lampMat,lx,5,z);head.castShadow=false;
 }}
 // Движущиеся машины-боты на дороге
 const bots=[];
@@ -103,15 +248,17 @@ const rubber=mat(0x111315);
 const botColors=[0xd83b35,0xf2f0e8,0x202a35,0x2f8bcb,0xe0b43a,0x777d84];
 function makeBot(i){
  const g=new THREE.Group(); scene.add(g);
+ const botWheels=[];
  const paint=mat(botColors[i%botColors.length],.32,.35), win=new THREE.MeshStandardMaterial({color:0x182632,roughness:.2,metalness:.25});
  box(1.9,.62,3.8,paint,0,.72,0,g); box(1.55,.65,1.85,win,0,1.28,-.25,g);
  box(1.85,.16,.12,paint,0,.47,1.88,g); box(1.85,.14,.12,paint,0,.48,-1.88,g);
- for(const x of [-1,1]) for(const z of [-1.2,1.2]){const w=new THREE.Mesh(new THREE.CylinderGeometry(.36,.36,.22,12),rubber);w.rotation.z=Math.PI/2;w.position.set(x,.38,z);w.castShadow=true;w.receiveShadow=true;g.add(w);}
+ for(const x of [-1,1]) for(const z of [-1.2,1.2]){const wg=new THREE.Group();wg.position.set(x,.38,z);const w=new THREE.Mesh(new THREE.CylinderGeometry(.36,.36,.22,16),rubber);w.rotation.z=Math.PI/2;w.castShadow=true;w.receiveShadow=true;wg.add(w);g.add(wg);botWheels.push(wg);}
  g.position.set([-6,-3,3,6][i%4],0,90+i*105);
- bots.push({mesh:g,cruise:22+(i%5)*7,lane:[-6,-3,3,6][i%4]});
+ bots.push({mesh:g,wheels:botWheels,cruise:22+(i%5)*7,lane:[-6,-3,3,6][i%4]});
 }
 for(let i=0;i<42;i++) makeBot(i);
 const car=new THREE.Group();scene.add(car);
+const carWheels=[];
 // Stylized BMW X5 G05-inspired SUV body (approximation)
 const bodyMat=mat(0x172e4d,.28,.68), glassMat=new THREE.MeshStandardMaterial({color:0x17232c,roughness:.16,metalness:.45}), rim=mat(0xb8c3cc,.22,.85), grille=mat(0x080b0e,.25,.6), lamp=mat(0xeaf7ff,.18,.35);
 box(2.28,.62,4.55,bodyMat,0,.82,0,car);
@@ -126,7 +273,7 @@ box(.66,.42,.07,grille,-.38,.91,2.30,car);box(.66,.42,.07,grille,.38,.91,2.30,ca
 for(const x of [-.76,.76]){box(.55,.19,.07,lamp,x,1.13,2.29,car);box(.5,.12,.07,mat(0xff3030),x,1.08,-2.29,car);}
 for(const x of [-.94,.94]){box(.10,.68,1.95,bodyMat,x,1.77,-.30,car);box(.16,.14,.22,bodyMat,x*1.15,1.48,.77,car);box(.10,.18,2.6,bodyMat,x,.55,-.08,car);}
 for(const x of [-1.12,1.12])for(const z of [-1.48,1.48]){
- let wheel=new THREE.Group();wheel.position.set(x,.49,z);car.add(wheel);
+ let wheel=new THREE.Group();wheel.position.set(x,.49,z);wheel.userData.isCarWheel=true;wheel.userData.front=z>0;car.add(wheel);carWheels.push(wheel);
  let tire=new THREE.Mesh(new THREE.CylinderGeometry(.49,.49,.30,20),rubber);tire.rotation.z=Math.PI/2;wheel.add(tire);
  let hub=new THREE.Mesh(new THREE.CylinderGeometry(.29,.29,.315,16),rim);hub.rotation.z=Math.PI/2;wheel.add(hub);
  let center=new THREE.Mesh(new THREE.CylinderGeometry(.10,.10,.325,12),grille);center.rotation.z=Math.PI/2;wheel.add(center);
@@ -168,7 +315,7 @@ new MTLLoader().load('./assets/BMW_X_5.mtl', materials => {
     object.traverse(node => { if (node.isMesh) { node.castShadow=true; node.receiveShadow=true; if(node.material){ const mats=Array.isArray(node.material)?node.material:[node.material]; mats.forEach(m=>{m.side=THREE.DoubleSide; if(m.color && m.color.getHex()===0xffffff) m.color.setHex(0x9ba4aa); m.roughness=Math.max(.22,m.roughness ?? .7); m.metalness=Math.min(.65,m.metalness ?? .15);}); } } });
     modelRoot.add(object);
     // Hide the blocky exterior, retaining no duplicate body under the detailed mesh.
-    car.children.forEach(child => { if(child !== modelRoot) child.visible=false; });
+    car.children.forEach(child => { if(child !== modelRoot && !child.userData.isCarWheel) child.visible=false; });
     modelMessage.textContent='3D-модель BMW X5 загружена';
     setTimeout(()=>modelMessage.remove(),2600);
   }, undefined, err => { modelMessage.textContent='Не удалось загрузить OBJ-модель'; console.error(err); });
@@ -194,44 +341,74 @@ document.querySelectorAll('.touchBtn, .pedal').forEach(btn=>{
 // Кнопки экранного руля влево/вправо обрабатываются вместе с педалями.
 addEventListener('keydown',e=>{keys[e.code]=true;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='KeyR')reset();});
 addEventListener('keyup',e=>keys[e.code]=false);
-let speed=0,heading=0,drift=0;const velocity=new THREE.Vector3();const clock=new THREE.Clock();
+let speed=0,heading=0,drift=0,steerAngle=0,bodyPitch=0,bodyRoll=0;const velocity=new THREE.Vector3();const clock=new THREE.Clock();
 // Игровая модель физики: тяга двигателя, инерция, сопротивление воздуха, сцепление шин и ручник.
 const MAX_SPEED=1000/3.6, MAX_REVERSE=35/3.6, WHEELBASE=2.9;
 function reset(){speed=0;heading=0;velocity.set(0,0,0);car.traverse(node=>{if(node.isMesh){node.castShadow=true;node.receiveShadow=true;}});
 car.position.set(0,0,0);car.rotation.y=0;}
 function update(dt){
 const gas=keys.KeyW||keys.ArrowUp,brake=keys.KeyS||keys.ArrowDown,left=keys.KeyA||keys.ArrowLeft,right=keys.KeyD||keys.ArrowRight,hand=keys.Space;
-const steer=(right?1:0)-(left?1:0);
-// Возвращена прежняя простая аркадная физика.
-if(gas)speed+=27*dt;
-if(brake)speed-=42*dt;
-if(!gas&&!brake)speed*=Math.pow(.985,dt*60);
-if(hand)speed*=Math.pow(.965,dt*60);
-speed=THREE.MathUtils.clamp(speed,-35,1000/3.6);
-const steerPower=(.35+Math.min(Math.abs(speed)/18,1.5))*dt;
-heading-=steer*steerPower*Math.sign(speed||1);
-car.rotation.y=heading;
+const steerInput=(left?1:0)-(right?1:0); // Исправлено: A/← влево, D/→ вправо
+// Более плавная автомобильная физика: тяга, тормоза, сопротивление и сцепление.
 const forward=new THREE.Vector3(Math.sin(heading),0,Math.cos(heading));
-velocity.copy(forward).multiplyScalar(speed);
+const rightVec=new THREE.Vector3(forward.z,0,-forward.x);
+const lateralSpeed=velocity.dot(rightVec);
+const traction=hand?0.42:0.88;
+const engineForce=gas?31:0;
+const brakeForce=brake?(speed>0?62:34):0;
+if(gas){speed+=engineForce*dt;}
+if(brake){if(speed>0.8)speed=Math.max(0,speed-brakeForce*dt);else speed-=34*dt;}
+if(!gas&&!brake)speed*=Math.exp(-(hand?1.65:0.42)*dt);
+if(hand)speed*=Math.exp(-.35*dt);
+speed=THREE.MathUtils.clamp(speed,-9.7,55.5);
+// Руль чувствительнее на малой скорости и спокойнее на высокой.
+const maxSteer=THREE.MathUtils.lerp(.62,.20,THREE.MathUtils.clamp(Math.abs(speed)/45,0,1));
+steerAngle=THREE.MathUtils.damp(steerAngle,steerInput*maxSteer,7,dt);
+const wheelbase=2.9;
+const yawRate=Math.abs(speed)>0.05 ? (speed/wheelbase)*Math.tan(steerAngle) : 0;
+heading+=yawRate*dt;
+// Боковой занос постепенно гасится сцеплением шин; ручник позволяет скользить.
+const newForward=new THREE.Vector3(Math.sin(heading),0,Math.cos(heading));
+const newRight=new THREE.Vector3(newForward.z,0,-newForward.x);
+let longitudinal=velocity.dot(newForward);
+let lateral=velocity.dot(newRight);
+longitudinal=THREE.MathUtils.damp(longitudinal,speed,5.5,dt);
+lateral*=Math.exp(-(hand?1.0:7.5)*dt);
+if(Math.abs(speed)<.15&&!gas&&!brake){longitudinal*=Math.exp(-5*dt);lateral*=Math.exp(-5*dt);}
+velocity.copy(newForward).multiplyScalar(longitudinal).addScaledVector(newRight,lateral);
 car.position.addScaledVector(velocity,dt);
-if(Math.abs(car.position.x)>8.2){car.position.x=Math.sign(car.position.x)*8.2;speed*=.92;}
-// Боты едут вперёд и появляются снова далеко впереди, создавая постоянный трафик
-for(const b of bots){b.mesh.position.z += b.cruise*dt;if(b.mesh.position.z < car.position.z-90){b.mesh.position.z=car.position.z+900+Math.random()*900;b.mesh.position.x=b.lane;}}
-// Камера: клавиша C переключает вид от третьего лица и вид из салона.
-if(cameraMode === 'third'){
- const desiredPos=car.localToWorld(new THREE.Vector3(0,4.5,-11));
- const targetPos=car.localToWorld(new THREE.Vector3(0,1.2,2.5));
- camera.position.lerp(desiredPos,1-Math.exp(-5.5*dt));
+car.rotation.y=heading;
+// Небольшие крен и клевок кузова для ощущения массы автомобиля.
+const targetRoll=THREE.MathUtils.clamp(-steerInput*Math.min(Math.abs(speed)/38,1)*.075,-.09,.09);
+const targetPitch=gas?-.025:(brake?.045:0);
+bodyRoll=THREE.MathUtils.damp(bodyRoll,targetRoll,4,dt);
+bodyPitch=THREE.MathUtils.damp(bodyPitch,targetPitch,5,dt);
+car.rotation.z=bodyRoll;
+car.rotation.x=bodyPitch;
+// Город открыт для свободного движения; мягкое торможение у края карты.
+if(Math.abs(car.position.x)>1450||Math.abs(car.position.z)>1450){speed*=Math.exp(-1.8*dt);}
+// Трафик движется по улицам, колёса вращаются; столкновение с ботом сбрасывает скорость.
+for(const b of bots){
+ b.mesh.position.z += b.cruise*dt;
+ for(const w of b.wheels)w.rotation.x -= b.cruise/.36*dt;
+ if(b.mesh.position.z < car.position.z-90){b.mesh.position.z=car.position.z+900+Math.random()*900;b.mesh.position.x=b.lane;}
+ const dx=car.position.x-b.mesh.position.x,dz=car.position.z-b.mesh.position.z;
+ if(Math.abs(dx)<2.6&&Math.abs(dz)<4.0){speed*=Math.exp(-3.2*dt);car.position.x+=Math.sign(dx||1)*2.0*dt;}
+}
+// Вращение и поворот передних колёс.
+for(const w of carWheels){w.rotation.x -= speed/.49*dt;w.rotation.y=w.userData.front?-steerAngle:0;}
+cabinWheel.rotation.z=-steerAngle*1.8;
+// Камера: C переключает вид от третьего лица и из салона.
+if(cameraMode==='third'){
+ const desiredPos=car.localToWorld(new THREE.Vector3(0,4.8,-12.5));
+ const targetPos=car.localToWorld(new THREE.Vector3(0,1.25,3.0));
+ camera.position.lerp(desiredPos,1-Math.exp(-4.5*dt));
  camera.lookAt(targetPos);
 } else {
  const cockpitPos=car.localToWorld(new THREE.Vector3(-.48,1.58,-.42));
- camera.position.copy(cockpitPos);
- camera.quaternion.copy(car.quaternion);
- camera.rotateY(Math.PI);
- camera.rotateX(-0.015);
+ camera.position.copy(cockpitPos);camera.quaternion.copy(car.quaternion);camera.rotateY(Math.PI);camera.rotateX(-.015);
 }
-
-if(socket && socket.connected && roomCode && performance.now()-lastNetSend>80){lastNetSend=performance.now();socket.emit('drive-state',{x:car.position.x,y:car.position.y,z:car.position.z,heading});}
+if(socket&&socket.connected&&roomCode&&performance.now()-lastNetSend>80){lastNetSend=performance.now();socket.emit('drive-state',{x:car.position.x,y:car.position.y,z:car.position.z,heading});}
 document.getElementById('num').textContent=Math.round(Math.abs(speed)*3.6);
 document.getElementById('gear').textContent=(speed<-.5?'R':speed>.5?'D':'N')+(hand?' · РУЧНИК':' · '+(gas?'РАЗГОН':brake?'ТОРМОЖЕНИЕ':'ГОТОВ'));
 }
